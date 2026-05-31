@@ -22,11 +22,19 @@ $parameters = parse_ini_file(__DIR__ ."/../.env.local");
 		elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) $IP=$_SERVER['HTTP_X_FORWARDED_FOR'];
 		else $IP=$_SERVER['REMOTE_ADDR'];
 
-		$con = mysqli_connect($parameters['searchdb_host'], $parameters['searchdb_username'], $parameters['searchdb_password']) or die(mysqli_error($con));
-		mysqli_select_db($parameters['searchdb_name']) or die(mysqli_error($con));
-		$query = "INSERT into didyoumean (query, suggestion, IP) values ('".addslashes($_GET['old'])."','".addslashes($_GET['query'])."','".$IP."')";
-		mysqli_query($con, $query) or die(mysqli_error($con).$query);
-		mysqli_close($con);
+		$con = mysqli_connect($parameters['searchdb_host'], $parameters['searchdb_username'], $parameters['searchdb_password'], $parameters['searchdb_name']);
+		if ($con) {
+			$stmt = mysqli_prepare($con, "INSERT into didyoumean (query, suggestion, IP) values (?, ?, ?)");
+			if ($stmt) {
+				$old = isset($_GET['old']) ? (string)$_GET['old'] : '';
+				$q = isset($_GET['query']) ? (string)$_GET['query'] : '';
+				$ip = (string)$IP;
+				mysqli_stmt_bind_param($stmt, 'sss', $old, $q, $ip);
+				mysqli_stmt_execute($stmt);
+				mysqli_stmt_close($stmt);
+			}
+			mysqli_close($con);
+		}
 	}
 	
 	header('Location: /search/'.addslashes(url_encode(trim($_GET['query']))));
